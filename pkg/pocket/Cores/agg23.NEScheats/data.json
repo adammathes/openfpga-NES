@@ -29,6 +29,15 @@
         "extensions": ["pal"],
         "size_maximum": "0xC0",
         "address": "0x10000000"
+      },
+      {
+        "name": "Cheats",
+        "id": 12,
+        "required": false,
+        "parameters": "0x3",
+        "extensions": ["gg", "cht"],
+        "size_maximum": "0x2000",
+        "address": "0x10000000"
       }
     ]
   }

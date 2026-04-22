@@ -1,0 +1,60 @@
+# --- Stage 1: donor for Quartus binaries from the CI image ---
+FROM raetro/quartus:21.1.1 AS quartus
+
+# --- Stage 2: modern runtime with Claude Code + Quartus ---
+FROM ubuntu:22.04
+
+USER root
+WORKDIR /workspace
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Copy Quartus.  raetro installs under /opt/intelFPGA or /opt/intelFPGA_lite;
+# grabbing all of /opt brings everything along without having to guess the path.
+COPY --from=quartus /opt /opt
+
+# 32-bit runtime libs (Quartus needs these) + dev tooling.
+RUN dpkg --add-architecture i386 \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends \
+        ca-certificates curl git make less vim gnupg \
+        iverilog \
+        python3 python3-pip python3-venv \
+        libc6:i386 libstdc++6:i386 libxtst6:i386 libxft2:i386 \
+        libncurses5:i386 libpng16-16:i386 \
+        libglib2.0-0 libsm6 libxrender1 libfontconfig1 \
+        libxext6 libfreetype6 \
+ && rm -rf /var/lib/apt/lists/*
+
+# Node 20.x for Claude Code.
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
+ && rm -rf /var/lib/apt/lists/* \
+ && npm install -g @anthropic-ai/claude-code
+
+# agg23/pocketpublish (the .rbf -> .rev reverser).
+RUN git clone --depth 1 https://github.com/agg23/pocketpublish /opt/pocketpublish \
+ && pip3 install -r /opt/pocketpublish/requirements.txt 2>&1 \
+        || pip3 install --break-system-packages -r /opt/pocketpublish/requirements.txt
+
+
+# Locate wherever quartus_sh ended up under /opt and drop it on PATH.
+RUN set -eux; \
+    QBIN="$(find /opt -maxdepth 6 -type f -name quartus_sh 2>/dev/null | head -1)"; \
+    if [ -z "$QBIN" ]; then echo "ERROR: quartus_sh not found under /opt" >&2; exit 1; fi; \
+    QROOT="$(dirname "$(dirname "$QBIN")")"; \
+    printf 'export QUARTUS_ROOTDIR="%s"\nexport PATH="%s/bin:$PATH"\n' \
+        "$QROOT" "$QROOT" > /etc/profile.d/quartus.sh; \
+    chmod +x /etc/profile.d/quartus.sh; \
+    echo "Quartus at $QROOT"; \
+    "$QBIN" --version | head -3
+
+RUN { \
+        echo 'source /etc/profile.d/quartus.sh'; \
+        echo 'export PS1="\[\e[32m\]nes-dev\[\e[0m\]:\w$ "'; \
+        echo 'alias build="quartus_sh --flow compile projects/nes_pocket.qpf"'; \
+        echo 'alias sim="make -C sim test"'; \
+        echo 'alias rev="python3 /opt/pocketpublish/reverse.py projects/output_files/nes_pocket.rbf pkg/pocket/Cores/agg23.NES/nes.rev"'; \
+    } >> /root/.bashrc
+
+CMD ["bash", "-l"]
+

@@ -77,6 +77,8 @@ module nes_top (
     input wire        ioctl_download,
 
     input wire palette_download,
+    input wire cheat_download,
+    input wire cheats_enabled,
     input wire is_downloading,
 
     // Save data
@@ -140,9 +142,38 @@ module nes_top (
 
   wire                               [  1:0]                   nes_ce;
 
-  wire gg_code = 0;
-  wire gg_reset = 0;
-  wire gg_avail = 0;
+  // Game Genie / cheat code loader.
+  //
+  // A dedicated loader parses ASCII Game-Genie cheat files streamed in on
+  // the same ioctl bus as the ROM, and feeds 129-bit codes into the upstream
+  // CODES module (see rtl/upstream/cheatcodes.sv).  The user toggles cheats
+  // on/off via `cheats_enabled`; individual cheats are all loaded and
+  // activated together (matching the simpler of the MiSTer flows).
+  //
+  // `gg_reset` clears the CODES table whenever a new ROM *or* a new cheat
+  // file begins to download, so the table always reflects the current file.
+  wire [128:0] gg_code;
+  wire [5:0]   gg_cheat_count;
+  wire         gg_avail;
+
+  reg  prev_rom_download;
+  reg  prev_cheat_download;
+  always @(posedge clk_ppu_21_47) begin
+    prev_rom_download   <= ioctl_download;
+    prev_cheat_download <= cheat_download;
+  end
+  wire gg_reset = (~prev_rom_download   && ioctl_download)
+                || (~prev_cheat_download && cheat_download);
+
+  cheat_loader cheat_loader_i (
+      .clk          (clk_ppu_21_47),
+      .reset        (gg_reset),
+      .stream_active(cheat_download),
+      .stream_wr    (ioctl_wr && cheat_download),
+      .stream_data  (ioctl_dout),
+      .gg_code      (gg_code),
+      .cheat_count  (gg_cheat_count)
+  );
 
   wire int_audio = 1;
   wire ext_audio = 1;
@@ -203,9 +234,11 @@ module nes_top (
       .sys_type      (sys_type),
       .nes_div       (nes_ce),
       .mapper_flags  (downloading ? 64'd0 : mapper_flags),
-      .gg            (status[20]),
+      // gg is inverted inside nes.v (`.enable(~gg)`), so drive it with the
+      // inverse of the user-facing toggle.
+      .gg            (~cheats_enabled),
       .gg_code       (gg_code),
-      .gg_reset      (gg_reset && loader_clk && !ioctl_addr),
+      .gg_reset      (gg_reset),
       .gg_avail      (gg_avail),
       // Audio
       .sample        (audio),
@@ -672,20 +705,22 @@ module nes_top (
   reg [3:0] clear_div = 0;
   reg clear_wr = 0;
 
-  reg prev_is_downloading = 0;
-  reg prev_palette_download = 0;
+  reg prev_ioctl_download = 0;
 
   always @(posedge clk_85_9) begin
-    prev_is_downloading   <= is_downloading;
-    prev_palette_download <= palette_download;
+    prev_ioctl_download <= ioctl_download;
 
     if (sd_buff_wr) begin
       // Save has been loaded, don't clear save RAM
       did_load_save <= 1;
     end
 
-    if (prev_is_downloading && ~is_downloading && ~did_load_save && ~prev_palette_download) begin
-      // All assets have been loaded and no save was loaded and we didn't just load a palette
+    // Only kick off the save-RAM clear on the real cartridge load (slot 0)
+    // completing. Previously this triggered on the falling edge of
+    // is_downloading (any slot), with explicit exclusions for palette. That
+    // meant loading a cheat file mid-session also fired clearing_ram, which
+    // holds the NES in reset for ~60 ms and restarts the game.
+    if (prev_ioctl_download && ~ioctl_download && ~did_load_save) begin
       clearing_ram <= 1;
     end
 

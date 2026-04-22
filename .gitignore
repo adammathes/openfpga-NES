@@ -70,3 +70,10 @@ cr_ie_info.json
 # ROMS Checklist
 !checklist.sha1
 !checklist.md5
+
+# Simulation artifacts
+sim/*.vvp
+sim/*.vcd
+tools/__pycache__/
+*.pyc
+sim/overflow.gg

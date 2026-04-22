@@ -15,8 +15,8 @@ module CODES(
 	input  [ADDR_WIDTH - 1:0] addr_in,
 	input  [DATA_WIDTH - 1:0] data_in,
 	input  [128:0] code,
-	output genie_ovr,
-	output [DATA_WIDTH - 1:0] genie_data
+	output logic genie_ovr,
+	output logic [DATA_WIDTH - 1:0] genie_data
 );
 
 parameter ADDR_WIDTH   = 16; // Not more than 32
@@ -60,6 +60,26 @@ always_ff @(posedge clk) begin
 	end
 end
 
+// --- Fan-out each code's fields onto continuous wires so the match loop
+// --- doesn't need indexed part-selects inside the always_comb (cleaner for
+// --- simulators and helps synthesis flatten the bit-picking).
+wire                          code_ena [MAX_CODES];
+wire                          code_cf  [MAX_CODES];
+wire [ADDR_WIDTH - 1:0]       code_a   [MAX_CODES];
+wire [DATA_WIDTH - 1:0]       code_c   [MAX_CODES];
+wire [DATA_WIDTH - 1:0]       code_d   [MAX_CODES];
+
+genvar gi;
+generate
+	for (gi = 0; gi < MAX_CODES; gi = gi + 1) begin : g_code_split
+		assign code_ena[gi] = codes[gi][ENA_F_S];
+		assign code_cf [gi] = codes[gi][COMP_F_S];
+		assign code_a  [gi] = codes[gi][ADDR_S   -: ADDR_WIDTH];
+		assign code_c  [gi] = codes[gi][COMP_S   -: DATA_WIDTH];
+		assign code_d  [gi] = codes[gi][DATA_S   -: DATA_WIDTH];
+	end
+endgenerate
+
 always_comb begin
 	int x;
 	genie_ovr = 0;
@@ -67,10 +87,10 @@ always_comb begin
 
 	if (enable) begin
 		for (x = 0; x < MAX_CODES; x = x + 1) begin
-			if (codes[x][ENA_F_S] && codes[x][ADDR_S-:ADDR_WIDTH] == addr_in) begin
-				if (!codes[x][COMP_F_S] || (codes[x][COMP_S-:DATA_WIDTH] == data_in)) begin
+			if (code_ena[x] && code_a[x] == addr_in) begin
+				if (!code_cf[x] || (code_c[x] == data_in)) begin
 					genie_ovr = 1;
-					genie_data = codes[x][DATA_S-:DATA_WIDTH];
+					genie_data = code_d[x];
 				end
 			end
 		end

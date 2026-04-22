@@ -1,0 +1,9 @@
+Cheats-capable fork of agg23's openFPGA NES core, based on the 1.0.1 release.
+
+Adds a Game Genie cheat code loader compatible with MiSTer and RetroArch .gg / .cht text files. Installs as a second NES-platform core alongside the stock agg23 release so both can be selected from the NES platform tile for side-by-side testing.
+
+Use:
+  Core Settings -> Cheats to pick a .gg or .cht file from the SD.
+  Core Settings -> Apply Cheat Codes to toggle them on / off.
+
+Upstream credits: core by Ludvig Strigeus, sorgelig, greyrogue, Kitrinx, paulb-nl, and many others; Pocket port by agg23. All underlying NES emulation is agg23's 1.0.1 release; issues with the cheats integration should be reported to this fork, not to agg23.

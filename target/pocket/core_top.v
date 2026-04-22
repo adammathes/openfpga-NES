@@ -358,6 +358,9 @@ module core_top (
         32'h310: begin
           turbo_speed <= bridge_wr_data[2:0];
         end
+        32'h320: begin
+          cheats_enabled <= bridge_wr_data[0];
+        end
       endcase
     end
   end
@@ -467,6 +470,7 @@ module core_top (
 
   wire ioctl_download = is_downloading && dataslot_requestwrite_id == 0;
   wire palette_download = is_downloading && dataslot_requestwrite_id == 11;
+  wire cheat_download = is_downloading && dataslot_requestwrite_id == 12;
 
   wire has_save;
 
@@ -683,6 +687,8 @@ module core_top (
   reg [2:0] turbo_speed = 0;
   reg swap_controllers = 0;
 
+  reg cheats_enabled = 0;
+
   wire [1:0] region_s;
 
   wire hide_overscan_s;
@@ -699,8 +705,10 @@ module core_top (
   wire [2:0] turbo_speed_s;
   wire swap_controllers_s;
 
+  wire cheats_enabled_s;
+
   synch_3 #(
-      .WIDTH(24)
+      .WIDTH(26)
   ) settings_s (
       {
         region,
@@ -714,7 +722,8 @@ module core_top (
         lightgun_enabled,
         lightgun_dpad_aim_speed,
         turbo_speed,
-        swap_controllers
+        swap_controllers,
+        cheats_enabled
       },
       {
         region_s,
@@ -728,7 +737,8 @@ module core_top (
         lightgun_enabled_s,
         lightgun_dpad_aim_speed_s,
         turbo_speed_s,
-        swap_controllers_s
+        swap_controllers_s,
+        cheats_enabled_s
       },
       clk_ppu_21_47
   );
@@ -823,6 +833,8 @@ module core_top (
       .ioctl_download(ioctl_download),
 
       .palette_download(palette_download),
+      .cheat_download  (cheat_download),
+      .cheats_enabled  (cheats_enabled_s),
       .is_downloading  (is_downloading),
 
       // Save data

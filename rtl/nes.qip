@@ -3,6 +3,7 @@
 # ==============================================================================
 set_global_assignment -name SYSTEMVERILOG_FILE        [file join $::quartus(qip_path) "gameloader.sv"]
 set_global_assignment -name SYSTEMVERILOG_FILE        [file join $::quartus(qip_path) "nes_top.sv"]
+set_global_assignment -name SYSTEMVERILOG_FILE        [file join $::quartus(qip_path) "cheat_loader.sv"]
 set_global_assignment -name SYSTEMVERILOG_FILE        [file join $::quartus(qip_path) "mappers/VRC.sv"]
 set_global_assignment -name SYSTEMVERILOG_FILE        [file join $::quartus(qip_path) "mappers/Sunsoft.sv"]
 set_global_assignment -name SYSTEMVERILOG_FILE        [file join $::quartus(qip_path) "mappers/Sachen.sv"]

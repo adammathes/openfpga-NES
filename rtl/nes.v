@@ -685,7 +685,16 @@ cart_top multi_mapper (
 wire genie_ovr;
 wire [7:0] genie_data;
 
-CODES codes (
+// Pocket has a tight ALM budget (~18480 on the Cyclone V 5CEBA4); the
+// upstream default of 32 simultaneous codes would blow the fit (each code is
+// 34 flops + a 16-bit address comparator), so cap lower here.  4 still
+// covers the common case: a single cheat, or a couple of compatible codes
+// for one game.
+CODES #(
+	.ADDR_WIDTH(16),
+	.DATA_WIDTH(8),
+	.MAX_CODES(4)
+) codes (
 	.clk        (clk),
 	.reset      (gg_reset),
 	.enable     (~gg),

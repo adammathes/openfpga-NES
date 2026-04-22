@@ -5,12 +5,12 @@
       "platform_ids": [
         "nes"
       ],
-      "shortname": "NES",
-      "description": "Nintendo Entertainment System and Famicom. Nintendo's first home console",
+      "shortname": "NEScheats",
+      "description": "NES core with Game Genie cheat support. Fork of agg23 NES 1.0.1.",
       "author": "agg23",
       "url": "https://github.com/agg23/openFPGA-NES",
-      "version": "1.0.1",
-      "date_release": "2024-09-16"
+      "version": "1.0.2",
+      "date_release": "2026-04-21"
     },
     "framework": {
       "target_product": "Analogue Pocket",

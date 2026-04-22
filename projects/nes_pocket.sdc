@@ -43,6 +43,14 @@
 # Set False Path
 # ==============================================================================
 
+# clearing_ram is a quasi-static boot-time flag in the clk_85_9 domain that
+# fans out combinationally through nes_top:reset_nes into the NES reset tree
+# (including the CODES Game-Genie comparator chain). STA flags it as a tight
+# clk_85_9 -> clk_ppu_21_47 cross-clock path (~11.6 ns window) that the
+# comparator can't meet. The signal only transitions during boot and is
+# stable for millions of cycles, so declaring the path false is safe.
+set_false_path -from [get_registers {core_top:ic|nes_top:nes|clearing_ram}]
+
 # ==============================================================================
 # Set Multicycle Path
 # ==============================================================================
